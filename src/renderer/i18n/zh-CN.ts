@@ -334,6 +334,8 @@ export const zhCN = {
       markdownSupported: '支持 Markdown',
       plantATree: '种植一棵树',
       dataTabPageSize: '每页结果',
+      virtualScrollBuffer: '预渲染行数',
+      virtualScrollBufferDescription: '提前加载视口下方的数据，大幅滚动更流畅，但占用更高。',
       noOpenTabs: '没有打开的标签, 请在左侧栏上导航或:',
       restorePreviousSession: '恢复上一个会话',
       closeTab: '关闭标签',

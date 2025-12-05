@@ -122,6 +122,26 @@
                                     />
                                  </div>
                               </div>
+                              <div class="form-group column col-12">
+                                 <div class="col-5 col-sm-12">
+                                    <label class="form-label">
+                                       {{ t('application.virtualScrollBuffer') }}
+                                    </label>
+                                 </div>
+                                 <div class="col-3 col-sm-12">
+                                    <BaseSelect
+                                       v-model="localVirtualScrollOffset"
+                                       class="form-select"
+                                       :options="pageSizes"
+                                       @change="updateVirtualScrollOffset"
+                                    />
+                                 </div>
+                                 <div class="col-4 col-sm-12 px-2 p-vcentered">
+                                    <small class="d-block" :style="'line-height: 1.1; font-size: 70%;'">
+                                       {{ t('application.virtualScrollBufferDescription') }}
+                                    </small>
+                                 </div>
+                              </div>
                               <div class="form-group column col-12 mb-0">
                                  <div class="col-5 col-sm-12">
                                     <label class="form-label">
@@ -470,6 +490,7 @@ const {
 const {
    locale: selectedLocale,
    dataTabLimit: pageSize,
+   virtualScrollOffset,
    autoComplete: selectedAutoComplete,
    lineWrap: selectedLineWrap,
    executeSelected: selectedExecuteSelected,
@@ -488,6 +509,7 @@ const { getSelected: selectedWorkspace } = storeToRefs(workspacesStore);
 const {
    changeLocale,
    changePageSize,
+   changeVirtualScrollOffset,
    changeRestoreTabs,
    changeDisableBlur,
    changeAutoComplete,
@@ -532,6 +554,7 @@ ORDER BY
 const localLocale: Ref<AvailableLocale> = ref(null);
 const defaultCopyType: Ref<string> = ref(null);
 const localPageSize: Ref<number> = ref(null);
+const localVirtualScrollOffset: Ref<number> = ref(null);
 const localTimeout: Ref<number> = ref(null);
 const localEditorTheme: Ref<string> = ref(null);
 const selectedTab: Ref<string> = ref('general');
@@ -623,6 +646,15 @@ const openOutside = (link: string) => {
    shell.openExternal(link);
 };
 
+const updateVirtualScrollOffset = () => {
+   let value = Number(localVirtualScrollOffset.value);
+   if (!Number.isFinite(value) || value < 0)
+      value = 0;
+
+   localVirtualScrollOffset.value = value;
+   changeVirtualScrollOffset(value);
+};
+
 const checkNotificationsTimeout = () => {
    if (!localTimeout.value)
       localTimeout.value = 10;
@@ -663,6 +695,7 @@ const toggleExecuteSelected = () => {
 localLocale.value = selectedLocale.value;
 defaultCopyType.value = selectedCopyType.value;
 localPageSize.value = pageSize.value as number;
+localVirtualScrollOffset.value = virtualScrollOffset.value as number;
 localTimeout.value = notificationsTimeout.value as number;
 localEditorTheme.value = editorTheme.value as string;
 selectedTab.value = selectedSettingTab.value;

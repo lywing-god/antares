@@ -343,6 +343,8 @@ export const enUS = {
       markdownSupported: 'Markdown supported',
       plantATree: 'Plant a Tree',
       dataTabPageSize: 'Results per page',
+      virtualScrollBuffer: 'Pre-rendered rows',
+      virtualScrollBufferDescription: 'Preload rows below the viewport for smoother long jumps at the cost of higher memory usage.',
       noOpenTabs: 'There are no open tabs, navigate on the left bar or:',
       restorePreviousSession: 'Restore previous session',
       closeTab: 'Close tab',

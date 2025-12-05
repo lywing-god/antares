@@ -22,6 +22,7 @@ export const useSettingsStore = defineStore('settings', {
       notificationsTimeout: settingsStore.get('notifications_timeout', 5) as number,
       showTableSize: settingsStore.get('show_table_size', false) as boolean,
       dataTabLimit: settingsStore.get('data_tab_limit', 1000) as number,
+      virtualScrollOffset: settingsStore.get('virtual_scroll_offset', 50) as number,
       autoComplete: settingsStore.get('auto_complete', true) as boolean,
       lineWrap: settingsStore.get('line_wrap', true) as boolean,
       executeSelected: settingsStore.get('execute_selected', true) as boolean,
@@ -42,6 +43,10 @@ export const useSettingsStore = defineStore('settings', {
       changePageSize (limit: number) {
          this.dataTabLimit = limit;
          settingsStore.set('data_tab_limit', this.dataTabLimit);
+      },
+      changeVirtualScrollOffset (offset: number) {
+         this.virtualScrollOffset = offset;
+         settingsStore.set('virtual_scroll_offset', this.virtualScrollOffset);
       },
       changeAllowPrerelease (allow: boolean) {
          this.allowPrerelease = allow;

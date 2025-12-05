@@ -21,7 +21,10 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia';
 import { onBeforeUnmount, onMounted, Ref, ref, watch } from 'vue';
+
+import { useSettingsStore } from '@/stores/settings';
 
 const props = defineProps({
    items: Array,
@@ -32,6 +35,8 @@ const props = defineProps({
       default: null
    }
 });
+
+const { virtualScrollOffset } = storeToRefs(useSettingsStore());
 
 const root = ref(null);
 const topHeight: Ref<number> = ref(0);
@@ -52,7 +57,7 @@ const checkScrollPosition = () => {
 const updateWindow = () => {
    const visibleItemsCount = Math.ceil(props.visibleHeight / props.itemHeight);
    const totalScrollHeight = props.items.length * props.itemHeight;
-   const offset = 50;
+   const offset = Number.isFinite(virtualScrollOffset.value) ? virtualScrollOffset.value : 50;
 
    const scrollTop = localScrollElement.value?.scrollTop;
 
@@ -78,6 +83,10 @@ const setScrollElement = () => {
 
 watch(() => props.scrollElement, () => {
    setScrollElement();
+});
+
+watch(() => virtualScrollOffset.value, () => {
+   updateWindow();
 });
 
 onMounted(() => {
