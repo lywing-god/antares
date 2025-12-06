@@ -94,6 +94,11 @@
          </template>
          <template #body>
             <div class="mb-2">
+               <div v-if="isJsonbEditor" class="editor-toolbar mb-2">
+                  <button class="btn btn-link btn-sm p-0" @click="formatJson">
+                     {{ t('application.formatJson') }}
+                  </button>
+               </div>
                <div>
                   <TextEditor
                      v-model="editingContent"
@@ -385,6 +390,8 @@ const isBaseSelectField = computed(() => {
    return isForeignKey(editingField.value) || inputProps.value.type === 'boolean' || enumArray.value;
 });
 
+const isJsonbEditor = computed(() => editingType.value === 'JSONB');
+
 const enumArray = computed(() => {
    if (props.fields[editingField.value] && props.fields[editingField.value].enumValues && props.fields[editingField.value].type !== 'SET')
       return props.fields[editingField.value].enumValues.replaceAll('\'', '').split(',');
@@ -408,6 +415,18 @@ const typeClass = (type: string) => {
    if (type)
       return `type-${type.toLowerCase().replaceAll(' ', '_').replaceAll('"', '')}`;
    return '';
+};
+
+const formatJson = () => {
+   if (!isJsonbEditor.value || editingContent.value === null || editingContent.value === undefined)
+      return;
+
+   try {
+      const parsed = JSON.parse(String(editingContent.value));
+      editingContent.value = JSON.stringify(parsed, null, 2);
+   }
+   catch (err) {
+   }
 };
 
 const editON = async (field: string) => {
@@ -717,5 +736,10 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
   }
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

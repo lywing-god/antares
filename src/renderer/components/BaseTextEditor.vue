@@ -55,8 +55,8 @@ watch(() => props.mode, () => {
 });
 
 watch(() => props.modelValue, () => {
-   if (editor && props.readOnly)
-      editor.session.setValue(props.modelValue);
+   if (editor && props.modelValue !== editor.getValue())
+      editor.session.setValue(props.modelValue || '');
 });
 
 watch(editorTheme, () => {

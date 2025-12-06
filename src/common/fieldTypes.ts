@@ -10,6 +10,7 @@ export const LONG_TEXT = [
    'MEDIUMTEXT',
    'LONGTEXT',
    'JSON',
+   'JSONB',
    'VARBINARY',
    'BLOB-TEXT'
 ];

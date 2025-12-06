@@ -326,6 +326,7 @@ export const zhCN = {
       includeBetaUpdates: '包含测试版更新',
       notificationsTimeout: '通知超时',
       openNewTab: '打开一个新标签',
+      formatJson: '格式化 JSON',
       unsavedChanges: '未保存的变更',
       discardUnsavedChanges: '您有一些未保存的变更, 关闭此标签将放弃这些变更.',
       applicationTheme: '应用程序主题',

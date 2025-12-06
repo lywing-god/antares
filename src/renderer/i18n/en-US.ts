@@ -335,6 +335,7 @@ export const enUS = {
       includeBetaUpdates: 'Include beta updates',
       notificationsTimeout: 'Notifications timeout',
       openNewTab: 'Open a new tab',
+      formatJson: 'Format JSON',
       unsavedChanges: 'Unsaved changes',
       discardUnsavedChanges: 'You have some unsaved changes. Closing this tab these changes will be discarded.',
       applicationTheme: 'Application Theme',
