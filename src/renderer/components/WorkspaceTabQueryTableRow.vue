@@ -541,11 +541,16 @@ const editOFF = () => {
 };
 
 const hideEditorModal = () => {
+   const field = editingField.value;
    isTextareaEditor.value = false;
    isBlobEditor.value = false;
    isMapModal.value = false;
    isMultiSpatial.value = false;
-   emit('stop-editing', editingField.value);
+   // Revert any pending changes when modal is dismissed
+   editingContent.value = originalContent.value;
+   editingType.value = null;
+   editingField.value = null;
+   emit('stop-editing', field);
 };
 
 const downloadFile = () => {
