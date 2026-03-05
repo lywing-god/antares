@@ -400,7 +400,8 @@ export default (connections: Record<string, antares.Client>) => {
                      fakeValue = (fakerCustom as any)[params.row[key].group][params.row[key].method]();
 
                   if (typeof fakeValue === 'string') {
-                     if (params.row[key].length)
+                     // Only trim textual values by declared length; datetime length is precision.
+                     if (params.row[key].length && [...TEXT, ...LONG_TEXT].includes(type))
                         fakeValue = fakeValue.substring(0, params.row[key].length);
 
                      switch (connections[params.uid]._client) {
