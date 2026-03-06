@@ -30,7 +30,7 @@ export const querySplitter =(sql: string, dbType: ClientCode): string[] => {
    // Regex patterns for BEGIN-END blocks, dollar tags in PostgreSQL, and semicolons
    const beginRegex = /\bBEGIN\b/i;
    const endRegex = /\bEND\b;/i;
-   const dollarTagRegex = /\$(\w+)?\$/; // Matches $tag$ or $$
+   const dollarTagRegex = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/; // Matches $tag$ or $$
 
    // Split on semicolons, keeping semicolons attached to the lines
    const lines = sql.split(/(?<=;)/);
@@ -57,25 +57,20 @@ export const querySplitter =(sql: string, dbType: ClientCode): string[] => {
 
          currentQuery += char;
 
-         if (dbType === 'pg') {
-         // Handle dollar-quoted blocks in PostgreSQL
-            if (!insideString && line.slice(i).match(dollarTagRegex)) {
-               const match = line.slice(i).match(dollarTagRegex);
-               if (match) {
-                  const tag = match[0];
-                  if (!insideDollarTag) {
-                     insideDollarTag = true;
-                     dollarTagDelimiter = tag;
-                     currentQuery += tag;
-                     i += tag.length - 1;
-                  }
-                  else if (dollarTagDelimiter === tag) {
-                     insideDollarTag = false;
-                     dollarTagDelimiter = null;
-                     currentQuery += tag;
-                     i += tag.length - 1;
-                  }
+         if (dbType === 'pg' && !insideString) {
+            // Handle dollar-quoted blocks in PostgreSQL
+            const match = line.slice(i).match(dollarTagRegex);
+            if (match) {
+               const tag = match[0];
+               if (!insideDollarTag) {
+                  insideDollarTag = true;
+                  dollarTagDelimiter = tag;
                }
+               else if (dollarTagDelimiter === tag) {
+                  insideDollarTag = false;
+                  dollarTagDelimiter = null;
+               }
+               i += tag.length - 1;
             }
          }
 
