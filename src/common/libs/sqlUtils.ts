@@ -62,6 +62,7 @@ export const querySplitter =(sql: string, dbType: ClientCode): string[] => {
             const match = line.slice(i).match(dollarTagRegex);
             if (match) {
                const tag = match[0];
+               currentQuery += tag.slice(1);
                if (!insideDollarTag) {
                   insideDollarTag = true;
                   dollarTagDelimiter = tag;
