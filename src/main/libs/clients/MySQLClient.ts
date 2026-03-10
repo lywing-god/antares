@@ -1759,7 +1759,7 @@ export class MySQLClient extends BaseClient {
       if (!args.comments)
          sql = removeComments(sql);
 
-      const nestTables = args.nest ? '.' : false;
+      const rowsAsArray = args.nest;
       const resultsArr: antares.QueryResult[] = [];
       let paramsArr = [];
       const queries = args.split
@@ -1776,13 +1776,51 @@ export class MySQLClient extends BaseClient {
 
          // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const { rows, report, fields, keys, duration }: any = await new Promise((resolve, reject) => {
-            connection.query({ sql: query, nestTables }).then(async ([response, fields]) => {
+            connection.query({ sql: query, rowsAsArray }).then(async ([response, fields]) => {
                timeStop = new Date();
                const queryResult = response;
                const fieldsArr = fields ? Array.isArray(fields[0]) ? fields[0] : fields : false;// Some times fields are nested in an array
 
-               let remappedFields = fieldsArr
-                  ? fieldsArr.map(field => {
+               const normalizedFields = (fieldsArr || []) as Array<mysql.FieldPacket & { name: string; table?: string; orgName?: string }>;
+               const usedColumnNames: Record<string, number> = {};
+               const columnsNames = normalizedFields.length
+                  ? normalizedFields.map(field => {
+                     const baseName = `${field.table ? `${field.table}.` : ''}${field.name}`;
+                     const repeated = (usedColumnNames[baseName] || 0) + 1;
+                     usedColumnNames[baseName] = repeated;
+                     return repeated === 1 ? baseName : `${baseName}#${repeated}`;
+                  })
+                  : [];
+               const mappedRows = args.nest && Array.isArray(queryResult) && normalizedFields.length
+                  ? queryResult.map(row => {
+                     const getCellValue = (field: mysql.FieldPacket & { name: string; table?: string; orgName?: string }, index: number) => {
+                        if (Array.isArray(row))
+                           return row[index];
+
+                        if (row && typeof row === 'object') {
+                           const rowObj = row as Record<string, unknown>;
+                           const tableFieldName = `${field.table ? `${field.table}.` : ''}${field.name}`;
+                           const candidateKeys = [tableFieldName, field.name, field.orgName, `${index}`].filter(Boolean) as string[];
+
+                           for (const key of candidateKeys) {
+                              if (Object.prototype.hasOwnProperty.call(rowObj, key))
+                                 return rowObj[key];
+                           }
+                        }
+
+                        return undefined;
+                     };
+
+                     const mappedRow: Record<string, unknown> = {};
+                     normalizedFields.forEach((field, i) => {
+                        mappedRow[columnsNames[i]] = getCellValue(field, i);
+                     });
+                     return mappedRow;
+                  })
+                  : queryResult;
+
+               let remappedFields = normalizedFields.length
+                  ? normalizedFields.map(field => {
                      if (!field || Array.isArray(field))
                         return undefined;
 
@@ -1851,7 +1889,7 @@ export class MySQLClient extends BaseClient {
 
                resolve({
                   duration: timeStop.getTime() - timeStart.getTime(),
-                  rows: Array.isArray(queryResult) ? queryResult.some(el => Array.isArray(el)) ? queryResult[0] : queryResult : false,
+                  rows: Array.isArray(mappedRows) ? mappedRows.some(el => Array.isArray(el)) && !args.nest ? mappedRows[0] : mappedRows : false,
                   report: !Array.isArray(queryResult) ? queryResult : false,
                   fields: remappedFields,
                   keys: keysArr

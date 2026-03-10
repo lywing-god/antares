@@ -392,40 +392,18 @@ const sortedResults = computed(() => {
 
 const resultsWithRows = computed(() => props.results.filter(result => result.rows.length));
 const fields = computed(() => resultsWithRows.value.length ? resultsWithRows.value[resultsetIndex.value].fields : []);
-const filteredFields = computed(() => fields.value.reduce((acc, cur) => {
-   if (acc.findIndex(f => JSON.stringify(f) === JSON.stringify(cur)))
-      acc.push(cur);
-   return acc;
-}, [] as TableField[]));
+const filteredFields = computed(() => fields.value);
 const keyUsage = computed(() => resultsWithRows.value.length ? resultsWithRows.value[resultsetIndex.value].keys : []);
 
 const fieldsObj = computed(() => {
    if (sortedResults.value.length) {
       const fieldsObj: { [key: string]: TableField } = {};
-      for (const key in sortedResults.value[0]) {
-         if (key === '_antares_id') continue;
+      const rowKeys = Object.keys(sortedResults.value[0]).filter(key => key !== '_antares_id');
 
-         const fieldObj = fields.value.find(field => {
-            let fieldNames = [
-               field.name,
-               field.alias,
-               `${field.table}.${field.name}`,
-               `${field.table}.${field.alias}`,
-               `${field.tableAlias}.${field.name}`,
-               `${field.tableAlias}.${field.alias}`
-            ];
+      rowKeys.forEach((key, index) => {
+         fieldsObj[key] = filteredFields.value[index];
+      });
 
-            if (field.table)
-               fieldNames = [...fieldNames, `${field.table.toLowerCase()}.${field.name}`, `${field.table.toLowerCase()}.${field.alias}`];
-
-            if (field.tableAlias)
-               fieldNames = [...fieldNames, `${field.tableAlias.toLowerCase()}.${field.name}`, `${field.tableAlias.toLowerCase()}.${field.alias}`];
-
-            return fieldNames.includes(key);
-         });
-
-         fieldsObj[key] = fieldObj;
-      }
       return fieldsObj;
    }
    return {};

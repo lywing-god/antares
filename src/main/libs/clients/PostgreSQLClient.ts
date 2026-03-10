@@ -1721,11 +1721,18 @@ export class PostgreSQLClient extends BaseClient {
                   if (args.nest) {
                      const tablesID = [...new Set(fields.map(field => field.tableID))].toString();
                      tablesInfo = await this.getTableByIDs(tablesID);
+                     const usedColumnNames: Record<string, number> = {};
+                     const columnsNames = fields.map(field => {
+                        const table = tablesInfo[field.tableID] ? tablesInfo[field.tableID].table : '';
+                        const baseName = `${table ? `${table}.` : ''}${field.name}`;
+                        const repeated = (usedColumnNames[baseName] || 0) + 1;
+                        usedColumnNames[baseName] = repeated;
+                        return repeated === 1 ? baseName : `${baseName}#${repeated}`;
+                     });
 
                      queryResult = rows.map(row => {
                         return row.reduce((acc, curr, i) => {
-                           const table = tablesInfo[fields[i].tableID] ? tablesInfo[fields[i].tableID].table : '';
-                           acc[`${table ? `${table}.` : ''}${fields[i].name}`] = curr;
+                           acc[columnsNames[i]] = curr;
                            return acc;
                         }, {});
                      });
