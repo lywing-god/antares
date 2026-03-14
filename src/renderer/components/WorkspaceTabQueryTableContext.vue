@@ -17,7 +17,7 @@
          />
          <div class="context-submenu">
             <div
-               v-if="selectedRows.length === 1"
+               v-if="selectedRows.length === 1 || selectedCell.isRange"
                class="context-element"
                @click="copyCell"
             >
