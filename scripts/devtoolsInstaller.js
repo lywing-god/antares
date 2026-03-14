@@ -11,11 +11,11 @@ const chromiumVersion = '124';
 const destFolder = path.resolve(__dirname, `../misc/${extensionID}`);
 const filePath = path.resolve(__dirname, `${destFolder}/${extensionID}.crx`);
 const fileUrl = `https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx2,crx3&x=id%3D${extensionID}%26uc&prodversion=${chromiumVersion}`;
+const forceDownload = process.argv.includes('--force');
+const manifestPath = path.resolve(destFolder, 'manifest.json');
 
 if (!fs.existsSync(destFolder))
    fs.mkdirSync(destFolder, { recursive: true });
-
-const fileStream = fs.createWriteStream(filePath);
 
 const downloadFile = url => {
    return /** @type {Promise<void>} */(new Promise((resolve, reject) => {
@@ -28,6 +28,7 @@ const downloadFile = url => {
                .catch(reject);
          }
 
+         const fileStream = fs.createWriteStream(filePath);
          response.pipe(fileStream);
 
          response.on('close', () => {
@@ -43,10 +44,17 @@ const downloadFile = url => {
 
 (async () => {
    try {
+      if (!forceDownload && fs.existsSync(manifestPath)) {
+         console.log('Devtools already installed, skipping download.');
+         process.exit();
+      }
+
       await downloadFile(fileUrl);
       await unzip(filePath, destFolder);
       fs.unlinkSync(filePath);
-      fs.unlinkSync(`${destFolder}/package.json`);// <- Avoid to display annoyng npm script in vscode
+      const extensionPackageJson = `${destFolder}/package.json`;
+      if (fs.existsSync(extensionPackageJson))
+         fs.unlinkSync(extensionPackageJson);// <- Avoid to display annoyng npm script in vscode
       process.exit();
    }
    catch (error) {
