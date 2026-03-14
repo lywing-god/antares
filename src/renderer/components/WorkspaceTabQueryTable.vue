@@ -93,9 +93,12 @@
                   :class="{ 'selected': selectedRows.includes(row._antares_id) }"
                   :selected="selectedRows.includes(row._antares_id)"
                   :selected-cell="selectedRows.length === 1 && selectedRows.includes(row._antares_id) ? selectedField : null"
+                  :selected-cell-range="selectedCellRange"
                   @start-editing="isEditingRow = true"
                   @stop-editing="isEditingRow = false"
                   @select-row="selectRow"
+                  @range-select="rangeSelect"
+                  @stop-range-select="stopRangeSelect"
                   @update-field="updateField($event, row)"
                   @contextmenu="contextMenu"
                />
@@ -319,6 +322,14 @@ const hasFocus = ref(false);
 const contextEvent = ref(null);
 const selectedCell = ref(null);
 const selectedRows = ref([]);
+const selectedRange: Ref<{
+   rowStart: number;
+   rowEnd: number;
+   colStart: number;
+   colEnd: number;
+} | null> = ref(null);
+const rangeAnchor: Ref<{ rowId: string; field: string } | null> = ref(null);
+const isRangeSelecting = ref(false);
 const currentSort: Ref<{field: string; dir: 'asc' | 'desc'}[]> = ref([]);
 const resultsetIndex = ref(0);
 const scrollElement = ref(null);
@@ -394,6 +405,25 @@ const resultsWithRows = computed(() => props.results.filter(result => result.row
 const fields = computed(() => resultsWithRows.value.length ? resultsWithRows.value[resultsetIndex.value].fields : []);
 const filteredFields = computed(() => fields.value);
 const keyUsage = computed(() => resultsWithRows.value.length ? resultsWithRows.value[resultsetIndex.value].keys : []);
+const fieldKeys = computed(() => sortedResults.value.length
+   ? Object.keys(sortedResults.value[0]).filter(key => key !== '_antares_id')
+   : []);
+const selectedCellRange = computed(() => {
+   if (!selectedRange.value)
+      return null;
+
+   const rowIds = sortedResults.value
+      .slice(selectedRange.value.rowStart, selectedRange.value.rowEnd + 1)
+      .map((row: any) => row._antares_id);
+   const selectedFieldKeys = fieldKeys.value.slice(selectedRange.value.colStart, selectedRange.value.colEnd + 1);
+
+   return {
+      rowIds: new Set(rowIds),
+      fieldKeys: new Set(selectedFieldKeys),
+      cellCount: rowIds.length * selectedFieldKeys.length
+   };
+});
+const hasMultiCellRange = computed(() => !!selectedCellRange.value && selectedCellRange.value.cellCount > 1);
 
 const fieldsObj = computed(() => {
    if (sortedResults.value.length) {
@@ -457,12 +487,56 @@ const getPrimaryValue = (row: any) => {
    return row[primaryFieldName];
 };
 
+const clearCellRangeSelection = () => {
+   selectedRange.value = null;
+   rangeAnchor.value = null;
+   isRangeSelecting.value = false;
+};
+
+const getRowIndexById = (rowId: string) => {
+   return sortedResults.value.findIndex((row: any) => row._antares_id === rowId);
+};
+
+const getFieldIndexByKey = (field: string) => {
+   return fieldKeys.value.findIndex(key => key === field);
+};
+
+const updateCellRangeSelection = (rowId: string, field: string) => {
+   if (!rangeAnchor.value)
+      return;
+
+   const anchorRowIndex = getRowIndexById(rangeAnchor.value.rowId);
+   const targetRowIndex = getRowIndexById(rowId);
+   const anchorFieldIndex = getFieldIndexByKey(rangeAnchor.value.field);
+   const targetFieldIndex = getFieldIndexByKey(field);
+
+   if ([anchorRowIndex, targetRowIndex, anchorFieldIndex, targetFieldIndex].some(index => index < 0))
+      return;
+
+   const rowStart = Math.min(anchorRowIndex, targetRowIndex);
+   const rowEnd = Math.max(anchorRowIndex, targetRowIndex);
+   const colStart = Math.min(anchorFieldIndex, targetFieldIndex);
+   const colEnd = Math.max(anchorFieldIndex, targetFieldIndex);
+
+   selectedRange.value = {
+      rowStart,
+      rowEnd,
+      colStart,
+      colEnd
+   };
+   selectedRows.value = sortedResults.value
+      .slice(rowStart, rowEnd + 1)
+      .map((item: any) => item._antares_id);
+   selectedField.value = field;
+};
+
 const setLocalResults = () => {
    localResults.value = resultsWithRows.value[resultsetIndex.value] && resultsWithRows.value[resultsetIndex.value].rows
       ? resultsWithRows.value[resultsetIndex.value].rows.map(item => {
          return { ...item, _antares_id: uidGen() };
       })
       : [];
+   clearCellRangeSelection();
 };
 
 const resizeResults = () => {
@@ -561,8 +635,60 @@ const setNull = () => {
    emit('update-field', params);
 };
 
-const copyCell = () => {
+const normalizeCellValue = (value: unknown) => {
+   if (value === null || value === undefined)
+      return '';
+
+   if (typeof value === 'object')
+      return JSON.stringify(value);
+
+   return String(value);
+};
+
+const getRangeTableData = () => {
+   if (!selectedRange.value)
+      return [];
+
+   const selectedFieldKeys = fieldKeys.value.slice(selectedRange.value.colStart, selectedRange.value.colEnd + 1);
+   const selectedRowsSlice = sortedResults.value.slice(selectedRange.value.rowStart, selectedRange.value.rowEnd + 1);
+
+   return selectedRowsSlice.map((row: any) => {
+      return selectedFieldKeys.map((key: string) => normalizeCellValue(row[key]));
+   });
+};
+
+const copyCellRange = async () => {
+   const tableData = getRangeTableData();
+   if (!tableData.length)
+      return;
+
+   const plainText = tableData.map(row => row.join('\t')).join('\n');
+   const htmlContent = createHtmlTable(tableData);
+
+   try {
+      const htmlBlob = new Blob([htmlContent.outerHTML], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
+      const data = [new ClipboardItem({
+         'text/plain': textBlob,
+         'text/html': htmlBlob
+      })];
+      await navigator.clipboard.write(data);
+   }
+   catch (err) {
+      await copyText(plainText);
+   }
+};
+
+const copyCell = async () => {
+   if (hasMultiCellRange.value) {
+      await copyCellRange();
+      return;
+   }
+
    const row: any = localResults.value.find((row: any) => selectedRows.value.includes(row._antares_id));
+   if (!row)
+      return;
+
    const cellName = Object.keys(row).find(prop => [
       selectedCell.value.field,
       selectedCell.value.orgField,
@@ -721,9 +847,25 @@ const applyUpdate = (params: TableUpdateParams) => {
    });
 };
 
-const selectRow = (event: KeyboardEvent, row: any, field: string) => {
+const selectRow = (event: MouseEvent, row: any, field: string) => {
+   if (tableWrapper.value) {
+      tableWrapper.value.focus();
+      hasFocus.value = true;
+   }
+
    selectedField.value = field;
    const selectedRowId = row._antares_id;
+
+   if (!(event.ctrlKey || event.metaKey || event.shiftKey)) {
+      rangeAnchor.value = {
+         rowId: selectedRowId,
+         field
+      };
+      isRangeSelecting.value = true;
+      updateCellRangeSelection(selectedRowId, field);
+   }
+   else
+      clearCellRangeSelection();
 
    if (event.ctrlKey || event.metaKey) {
       if (selectedRows.value.includes(selectedRowId))
@@ -752,9 +894,21 @@ const selectRow = (event: KeyboardEvent, row: any, field: string) => {
       selectedRows.value = [selectedRowId];
 };
 
+const rangeSelect = (row: any, field: string) => {
+   if (!isRangeSelecting.value || !rangeAnchor.value)
+      return;
+
+   updateCellRangeSelection(row._antares_id, field);
+};
+
+const stopRangeSelect = () => {
+   isRangeSelecting.value = false;
+};
+
 const selectAllRows = (e: KeyboardEvent) => {
    if ((e.target as HTMLElement).classList.contains('editable-field')) return;
 
+   clearCellRangeSelection();
    selectedField.value = 0;
    selectedRows.value = localResults.value.reduce((acc, curr: any) => {
       acc.push(curr._antares_id);
@@ -766,6 +920,7 @@ const deselectRows = (e: Event) => {
    if (!isEditingRow.value) {
       if (!isDeleteConfirmModal.value)
          selectedRows.value = [];
+      clearCellRangeSelection();
 
       if (e.type === 'blur')
          hasFocus.value = false;
@@ -777,9 +932,19 @@ const deselectRows = (e: Event) => {
 const contextMenu = (event: MouseEvent, cell: any) => {
    if ((event.target as HTMLElement).localName === 'input') return;
 
-   selectedCell.value = cell;
-   if (!selectedRows.value.includes(cell.id))
+   const isCellInRange = !!selectedCellRange.value &&
+      selectedCellRange.value.rowIds.has(cell.id) &&
+      selectedCellRange.value.fieldKeys.has(cell.orgField);
+
+   selectedCell.value = {
+      ...cell,
+      isRange: hasMultiCellRange.value && isCellInRange
+   };
+
+   if (!isCellInRange) {
+      clearCellRangeSelection();
       selectedRows.value = [cell.id];
+   }
    contextEvent.value = event;
    isContext.value = true;
 };
@@ -787,6 +952,7 @@ const contextMenu = (event: MouseEvent, cell: any) => {
 const sort = (field: TableField) => {
    if (!isSortable.value || props.isQuering) return;
 
+   clearCellRangeSelection();
    selectedRows.value = [];
    let fieldName = field.name;
    const hasTableInFieldname = Object.keys(localResults.value[0]).find(k => k !== '_antares_id').includes('.');
@@ -823,6 +989,7 @@ const resetSort = () => {
 };
 
 const selectResultset = (index: number) => {
+   clearCellRangeSelection();
    resultsetIndex.value = index;
 };
 
@@ -889,10 +1056,17 @@ const onKey = async (e: KeyboardEvent) => {
    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC' && !e.altKey) {
       const copyType = defaultCopyType.value;
       if (selectedRows.value.length >= 1) {
-         if (selectedRows.value.length === 1 && copyType === 'cell')
-            await copyText(scrollElement.value.querySelector('.td.selected').innerText);
-         else if (selectedRows.value.length > 1 && copyType === 'cell')
-            copyRow('html');
+         if (copyType === 'cell') {
+            if (hasMultiCellRange.value)
+               await copyCellRange();
+            else if (selectedRows.value.length === 1) {
+               const selectedTd = scrollElement.value?.querySelector('.td.selected');
+               if (selectedTd)
+                  await copyText(selectedTd.innerText);
+            }
+            else
+               copyRow('html');
+         }
          else
             copyRow(copyType);
       }
@@ -901,6 +1075,7 @@ const onKey = async (e: KeyboardEvent) => {
    // row navigation stuff
    if (!(e.ctrlKey || e.metaKey) && (e.code.includes('Arrow') || e.code === 'Tab') && sortedResults.value.length > 0 && !e.altKey) {
       e.preventDefault();
+      clearCellRangeSelection();
 
       const aviableFields = Object.keys(sortedResults.value[0]).slice(0, -1); // removes _antares_id
 
@@ -1043,11 +1218,13 @@ onUpdated(() => {
 onMounted(() => {
    window.addEventListener('resize', resizeResults);
    window.addEventListener('keydown', onKey);
+   window.addEventListener('mouseup', stopRangeSelect);
 });
 
 onUnmounted(() => {
    window.removeEventListener('resize', resizeResults);
    window.removeEventListener('keydown', onKey);
+   window.removeEventListener('mouseup', stopRangeSelect);
 });
 
 </script>

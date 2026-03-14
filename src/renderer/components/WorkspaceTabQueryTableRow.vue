@@ -8,8 +8,10 @@
          v-show="cKey !== '_antares_id'"
          :key="cKey"
          class="td p-0"
-         :class="{selected: selectedCell === cKey}"
-         @click="selectRow($event, cKey)"
+         :class="{ selected: selectedCell === cKey || isCellInRange(cKey) }"
+         @mousedown.left.prevent="selectRow($event, cKey)"
+         @mouseenter="hoverCell($event, cKey)"
+         @mouseup.left="stopRangeSelect"
 
          @contextmenu.prevent="openContext($event, {
             id: row._antares_id,
@@ -273,10 +275,17 @@ const props = defineProps({
    itemHeight: Number,
    elementType: { type: String, default: 'table' },
    selected: { type: Boolean, default: false },
-   selectedCell: { type: String, default: null }
+   selectedCell: { type: String, default: null },
+   selectedCellRange: {
+      type: Object as Prop<{
+         rowIds: Set<string>;
+         fieldKeys: Set<string>;
+      } | null>,
+      default: null
+   }
 });
 
-const emit = defineEmits(['update-field', 'select-row', 'contextmenu', 'start-editing', 'stop-editing']);
+const emit = defineEmits(['update-field', 'select-row', 'contextmenu', 'start-editing', 'stop-editing', 'range-select', 'stop-range-select']);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const isInlineEditor: Ref<any> = ref({});
@@ -582,8 +591,25 @@ const prepareToDelete = () => {
    willBeDeleted.value = true;
 };
 
-const selectRow = (event: Event, field: string) => {
+const isCellInRange = (field: string) => {
+   if (!props.selectedCellRange)
+      return false;
+
+   return props.selectedCellRange.rowIds.has(props.row._antares_id) && props.selectedCellRange.fieldKeys.has(field);
+};
+
+const selectRow = (event: MouseEvent, field: string) => {
    emit('select-row', event, props.row, field);
+};
+
+const hoverCell = (event: MouseEvent, field: string) => {
+   if (event.buttons !== 1) return;
+
+   emit('range-select', props.row, field);
+};
+
+const stopRangeSelect = () => {
+   emit('stop-range-select');
 };
 
 const getKeyUsage = (keyName: string) => {
