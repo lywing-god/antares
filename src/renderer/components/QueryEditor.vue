@@ -35,17 +35,18 @@ const { baseCompleter } = storeToRefs(applicationStore);
 const {
    editorTheme,
    editorFontSize,
+   editorFontFamily,
    autoComplete,
    lineWrap
 } = storeToRefs(settingsStore);
 
 const sizes = {
-   xsmall: '10px',
-   small: '12px',
-   medium: '14px',
-   large: '16px',
-   xlarge: '18px',
-   xxlarge: '20px'
+   xsmall: 10,
+   small: 12,
+   medium: 14,
+   large: 16,
+   xlarge: 18,
+   xxlarge: 20
 };
 
 const props = defineProps({
@@ -264,6 +265,15 @@ watch(editorFontSize, () => {
    }
 });
 
+watch(editorFontFamily, () => {
+   if (editor.value) {
+      editor.value.setOptions({
+         fontFamily: editorFontFamily.value || ''
+      });
+      editor.value.resize();
+   }
+});
+
 watch(autoComplete, () => {
    if (editor.value) {
       editor.value.setOptions({
@@ -303,22 +313,31 @@ watch(lastSchema, () => {
 lastSchema.value = toRef(props, 'schema').value;
 
 onMounted(() => {
-   editor.value = ace.edit(`editor-${id.value}`, {
+   const editorOptions: Partial<ace.Ace.EditorOptions> = {
       mode: `ace/mode/${mode.value}`,
       theme: `ace/theme/${editorTheme.value}`,
       value: props.modelValue,
       fontSize: 14,
       printMargin: false,
       readOnly: props.readOnly
-   });
+   };
 
-   editor.value.setOptions({
+   if (editorFontFamily.value)
+      editorOptions.fontFamily = editorFontFamily.value;
+   editor.value = ace.edit(`editor-${id.value}`, editorOptions);
+
+   const runtimeOptions: Partial<ace.Ace.EditorOptions> = {
       enableBasicAutocompletion: true,
       wrap: lineWrap.value,
       enableSnippets: true,
       enableLiveAutocompletion: autoComplete.value,
       fontSize: sizes[editorFontSize.value]
-   });
+   };
+
+   if (editorFontFamily.value)
+      runtimeOptions.fontFamily = editorFontFamily.value;
+
+   editor.value.setOptions(runtimeOptions);
 
    if (!baseCompleter.value.length)
       setBaseCompleters(editor.value.completers.map(el => Object.assign({}, el)));

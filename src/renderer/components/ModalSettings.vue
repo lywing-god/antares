@@ -380,6 +380,26 @@
                                  </button>
                               </div>
                            </div>
+                           <div class="column col-12 col-sm-12 mb-4">
+                              <label class="form-label">{{ t('application.editorFontFamily') }}</label>
+                              <div class="input-group">
+                                 <BaseSelect
+                                    v-model="localEditorFontFamily"
+                                    class="form-select"
+                                    :options="editorFontFamilies"
+                                    option-label="name"
+                                    option-track-by="code"
+                                    @change="changeEditorFontFamily(localEditorFontFamily)"
+                                 />
+                                 <button
+                                    class="btn btn-dark input-group-btn"
+                                    :disabled="!editorFontFamily"
+                                    @click="clearEditorFontFamily"
+                                 >
+                                    {{ t('database.default') }}
+                                 </button>
+                              </div>
+                           </div>
                            <div class="column col-12">
                               <BaseTextEditor
                                  :model-value="exampleQuery"
@@ -458,7 +478,7 @@
 <script setup lang="ts">
 import { shell } from 'electron';
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount, Ref, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, Ref, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import BaseIcon from '@/components/BaseIcon.vue';
@@ -501,7 +521,8 @@ const {
    disableBlur,
    applicationTheme,
    editorTheme,
-   editorFontSize
+   editorFontSize,
+   editorFontFamily
 } = storeToRefs(settingsStore);
 
 const { getSelected: selectedWorkspace } = storeToRefs(workspacesStore);
@@ -518,6 +539,7 @@ const {
    changeApplicationTheme,
    changeEditorTheme,
    changeEditorFontSize,
+   changeEditorFontFamily,
    updateNotificationsTimeout,
    changeDefaultCopyType,
    changeShowTableSize
@@ -557,7 +579,9 @@ const localPageSize: Ref<number> = ref(null);
 const localVirtualScrollOffset: Ref<number> = ref(null);
 const localTimeout: Ref<number> = ref(null);
 const localEditorTheme: Ref<string> = ref(null);
+const localEditorFontFamily: Ref<string> = ref(null);
 const selectedTab: Ref<string> = ref('general');
+const systemFontFamilies: Ref<{code: string; name: string}[]> = ref([]);
 
 const editorThemes = computed(() => [
    {
@@ -608,6 +632,57 @@ const editorThemes = computed(() => [
       ]
    }
 ]);
+
+const isMonospaceFontName = (fontName: string) => {
+   const canvas = document.createElement('canvas');
+   const context = canvas.getContext('2d');
+   if (!context)
+      return true;
+
+   const escapedFontName = fontName
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, '\\\'');
+
+   context.font = `16px '${escapedFontName}', monospace`;
+   const narrowTextWidth = context.measureText('iiiiiiiiii').width;
+   const wideTextWidth = context.measureText('WWWWWWWWWW').width;
+
+   return Math.abs(narrowTextWidth - wideTextWidth) < 0.01;
+};
+
+const editorFontFamilies = computed(() => {
+   const options = [...systemFontFamilies.value];
+
+   if (editorFontFamily.value && !options.some(font => font.code === editorFontFamily.value))
+      options.unshift({ code: editorFontFamily.value, name: editorFontFamily.value });
+
+   return options;
+});
+
+const loadSystemFonts = async () => {
+   try {
+      const fontsApi = (window as Window & { queryLocalFonts?: () => Promise<Array<{ fullName?: string; family?: string }>> }).queryLocalFonts;
+      if (!fontsApi)
+         return;
+
+      const fonts = await fontsApi();
+      const names = [...new Set(
+         fonts
+            .map(font => (font.family || font.fullName || '').trim())
+            .filter(Boolean)
+      )]
+         .filter(isMonospaceFontName)
+         .sort((a, b) => a.localeCompare(b));
+
+      systemFontFamilies.value = names.map(name => ({
+         code: `'${name.replace(/'/g, '\\\'')}'`,
+         name
+      }));
+   }
+   catch (error) {
+      console.warn('Unable to query local fonts', error);
+   }
+};
 
 const locales = computed(() => {
    const locales = [];
@@ -692,14 +767,24 @@ const toggleExecuteSelected = () => {
    changeExecuteSelected(!selectedExecuteSelected.value);
 };
 
+const clearEditorFontFamily = () => {
+   localEditorFontFamily.value = null;
+   changeEditorFontFamily(null);
+};
+
 localLocale.value = selectedLocale.value;
 defaultCopyType.value = selectedCopyType.value;
 localPageSize.value = pageSize.value as number;
 localVirtualScrollOffset.value = virtualScrollOffset.value as number;
 localTimeout.value = notificationsTimeout.value as number;
 localEditorTheme.value = editorTheme.value as string;
+localEditorFontFamily.value = editorFontFamily.value as string;
 selectedTab.value = selectedSettingTab.value;
 window.addEventListener('keydown', onKey);
+
+onMounted(() => {
+   loadSystemFonts();
+});
 
 onBeforeUnmount(() => {
    window.removeEventListener('keydown', onKey);

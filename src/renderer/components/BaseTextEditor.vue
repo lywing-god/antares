@@ -42,6 +42,7 @@ const settingsStore = useSettingsStore();
 const {
    editorTheme,
    editorFontSize,
+   editorFontFamily,
    autoComplete,
    lineWrap
 } = storeToRefs(settingsStore);
@@ -66,18 +67,27 @@ watch(editorTheme, () => {
 
 watch(editorFontSize, () => {
    const sizes = {
-      xsmall: '10px',
-      small: '12px',
-      medium: '14px',
-      large: '16px',
-      xlarge: '18px',
-      xxlarge: '20px'
+      xsmall: 10,
+      small: 12,
+      medium: 14,
+      large: 16,
+      xlarge: 18,
+      xxlarge: 20
    };
 
    if (editor) {
       editor.setOptions({
          fontSize: sizes[editorFontSize.value]
       });
+   }
+});
+
+watch(editorFontFamily, () => {
+   if (editor) {
+      editor.setOptions({
+         fontFamily: editorFontFamily.value || ''
+      });
+      editor.resize();
    }
 });
 
@@ -98,7 +108,7 @@ watch(lineWrap, () => {
 });
 
 onMounted(() => {
-   editor = ace.edit(`editor-${id}`, {
+   const editorOptions: Partial<ace.Ace.EditorOptions> = {
       mode: `ace/mode/${props.mode}`,
       theme: `ace/theme/${editorTheme.value}`,
       value: props.modelValue || '',
@@ -107,7 +117,12 @@ onMounted(() => {
       readOnly: props.readOnly,
       showLineNumbers: props.showLineNumbers,
       showGutter: props.showLineNumbers
-   });
+   };
+
+   if (editorFontFamily.value)
+      editorOptions.fontFamily = editorFontFamily.value;
+
+   editor = ace.edit(`editor-${id}`, editorOptions);
 
    editor.setOptions({
       enableBasicAutocompletion: false,

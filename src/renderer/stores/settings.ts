@@ -29,6 +29,7 @@ export const useSettingsStore = defineStore('settings', {
       applicationTheme: settingsStore.get('application_theme', defaultAppTheme) as ApplicationTheme,
       editorTheme: settingsStore.get('editor_theme', defaultEditorTheme) as string,
       editorFontSize: settingsStore.get('editor_font_size', 'medium') as EditorFontSize,
+      editorFontFamily: settingsStore.get('editor_font_family', null) as string | null,
       restoreTabs: settingsStore.get('restore_tabs', true) as boolean,
       disableBlur: settingsStore.get('disable_blur', false) as boolean,
       shortcuts: shortcutsStore.get('shortcuts', []) as ShortcutRecord[],
@@ -88,6 +89,12 @@ export const useSettingsStore = defineStore('settings', {
       changeEditorFontSize (size: EditorFontSize) {
          this.editorFontSize = size;
          settingsStore.set('editor_font_size', this.editorFontSize);
+      },
+      changeEditorFontFamily (fontFamily: string | null) {
+         this.editorFontFamily = fontFamily && fontFamily.trim()
+            ? fontFamily.trim()
+            : null;
+         settingsStore.set('editor_font_family', this.editorFontFamily);
       },
       changeRestoreTabs (val: boolean) {
          this.restoreTabs = val;

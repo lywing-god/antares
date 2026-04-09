@@ -340,6 +340,7 @@ export const enUS = {
       discardUnsavedChanges: 'You have some unsaved changes. Closing this tab these changes will be discarded.',
       applicationTheme: 'Application Theme',
       editorTheme: 'Editor Theme',
+      editorFontFamily: 'Editor Font Family',
       wrapLongLines: 'Wrap long lines',
       markdownSupported: 'Markdown supported',
       plantATree: 'Plant a Tree',
