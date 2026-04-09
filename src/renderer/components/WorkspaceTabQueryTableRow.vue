@@ -9,7 +9,7 @@
          :key="cKey"
          class="td p-0"
          :class="{ selected: selectedCell === cKey || isCellInRange(cKey) }"
-         @mousedown.left.prevent="selectRow($event, cKey)"
+         @mousedown.left="onCellMouseDown($event, cKey)"
          @mouseenter="hoverCell($event, cKey)"
          @mouseup.left="stopRangeSelect"
 
@@ -600,6 +600,15 @@ const isCellInRange = (field: string) => {
 
 const selectRow = (event: MouseEvent, field: string) => {
    emit('select-row', event, props.row, field);
+};
+
+const onCellMouseDown = (event: MouseEvent, field: string) => {
+   const target = event.target as HTMLElement | null;
+   if (target?.closest('.editable-field'))
+      return;
+
+   event.preventDefault();
+   selectRow(event, field);
 };
 
 const hoverCell = (event: MouseEvent, field: string) => {
