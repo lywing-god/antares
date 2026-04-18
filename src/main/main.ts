@@ -1,5 +1,5 @@
 import * as remoteMain from '@electron/remote/main';
-import { app, BrowserWindow, ipcMain, nativeImage, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, safeStorage } from 'electron';
 import * as log from 'electron-log/main';
 import * as Store from 'electron-store';
 import * as windowStateKeeper from 'electron-window-state';
@@ -11,7 +11,6 @@ import { OsMenu, ShortcutRegister } from './libs/ShortcutRegister';
 Store.initRenderer();
 log.errorHandler.startCatching();
 const settingsStore = new Store({ name: 'settings' });
-const appTheme = settingsStore.get('application_theme');
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const isMacOS = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
@@ -23,6 +22,30 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 let mainWindow: BrowserWindow;
 let mainWindowState: windowStateKeeper.State;
+
+const getEffectiveAppTheme = () => {
+   const appTheme = settingsStore.get('application_theme') as string;
+   if (appTheme === 'system')
+      return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+
+   return appTheme;
+};
+
+const getWindowOverlayConfig = () => {
+   const appTheme = getEffectiveAppTheme();
+   return {
+      color: appTheme === 'dark' ? '#3f3f3f' : '#fff',
+      symbolColor: appTheme === 'dark' ? '#fff' : '#000'
+   };
+};
+
+const refreshWindowOverlayTheme = () => {
+   if (isWindows && mainWindow) {
+      mainWindow.setTitleBarOverlay({
+         ...getWindowOverlayConfig()
+      });
+   }
+};
 
 async function createMainWindow () {
    const icon = require('../renderer/images/logo-64.png');
@@ -47,8 +70,7 @@ async function createMainWindow () {
       titleBarStyle: 'hidden',
       titleBarOverlay: isWindows
          ? {
-            color: appTheme === 'dark' ? '#3f3f3f' : '#fff',
-            symbolColor: appTheme === 'dark' ? '#fff' : '#000',
+            ...getWindowOverlayConfig(),
             height: 30
          }
          : false,
@@ -87,13 +109,12 @@ require('@electron/remote/main').initialize();
 ipcHandlers();
 
 ipcMain.on('refresh-theme-settings', () => {
-   const appTheme = settingsStore.get('application_theme');
-   if (isWindows && mainWindow) {
-      mainWindow.setTitleBarOverlay({
-         color: appTheme === 'dark' ? '#3f3f3f' : '#fff',
-         symbolColor: appTheme === 'dark' ? '#fff' : '#000'
-      });
-   }
+   refreshWindowOverlayTheme();
+});
+
+nativeTheme.on('updated', () => {
+   if (settingsStore.get('application_theme') === 'system')
+      refreshWindowOverlayTheme();
 });
 
 ipcMain.on('change-window-title', (_, title: string) => {

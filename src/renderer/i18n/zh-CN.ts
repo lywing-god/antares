@@ -297,6 +297,7 @@ export const zhCN = {
       event: '事件',
       light: '明亮',
       dark: '暗黑',
+      system: '跟随系统',
       autoCompletion: '自动完成',
       application: '应用程序',
       editor: '编辑器',

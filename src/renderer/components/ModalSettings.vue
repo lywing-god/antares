@@ -283,7 +283,7 @@
                               {{ t('application.applicationTheme') }}
                            </div>
                            <div
-                              class="column col-6 c-hand theme-block"
+                              class="column col-4 c-hand theme-block"
                               :class="{'selected': applicationTheme === 'dark'}"
                               @click="changeApplicationTheme('dark')"
                            >
@@ -300,7 +300,7 @@
                               </div>
                            </div>
                            <div
-                              class="column col-6 c-hand theme-block"
+                              class="column col-4 c-hand theme-block"
                               :class="{'selected': applicationTheme === 'light'}"
                               @click="changeApplicationTheme('light')"
                            >
@@ -313,6 +313,23 @@
                                  />
                                  <div class="h6 mt-4">
                                     {{ t('application.light') }}
+                                 </div>
+                              </div>
+                           </div>
+                           <div
+                              class="column col-4 c-hand theme-block"
+                              :class="{'selected': applicationTheme === 'system'}"
+                              @click="changeApplicationTheme('system')"
+                           >
+                              <img :src="systemPreview" class="img-responsive img-fit-cover s-rounded">
+                              <div class="theme-name system-theme-name">
+                                 <BaseIcon
+                                    icon-name="mdiCog"
+                                    class="mr-1 system-theme-icon"
+                                    :size="48"
+                                 />
+                                 <div class="h6 mt-4 system-theme-label">
+                                    {{ t('application.system') }}
                                  </div>
                               </div>
                            </div>
@@ -557,6 +574,7 @@ const contributors = process.env.APP_CONTRIBUTORS;
 const appLogo = require('../images/logo.svg');
 const darkPreview = require('../images/dark.png');
 const lightPreview = require('../images/light.png');
+const systemPreview = require('../images/system.png');
 const exampleQuery = `-- This is an example
 SELECT
     employee.id,
@@ -839,6 +857,19 @@ onBeforeUnmount(() => {
             top: 0;
             height: 100%;
             width: 100%;
+          }
+
+          .system-theme-name {
+            justify-content: space-between;
+            padding: 0.75rem 0;
+
+            .system-theme-icon {
+              color: #2d2d2d;
+            }
+
+            .system-theme-label {
+              color: #fff;
+            }
           }
         }
       }

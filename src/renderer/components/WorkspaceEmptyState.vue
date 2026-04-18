@@ -1,7 +1,7 @@
 <template>
    <div class="column col-12 empty">
       <div class="empty-icon">
-         <img :src="logos[applicationTheme]" width="200">
+         <img :src="logos[currentApplicationTheme]" width="200">
       </div>
       <p class="h6 empty-subtitle">
          {{ t('application.noOpenTabs') }}
@@ -20,7 +20,7 @@
 </template>
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import BaseIcon from '@/components/BaseIcon.vue';
@@ -31,24 +31,43 @@ const { t } = useI18n();
 
 const emit = defineEmits(['new-tab']);
 
-const logos = {
+const logos: Record<'light' | 'dark', string> = {
    light: require('../images/logo-light.svg') as string,
    dark: require('../images/logo-dark.svg') as string
 };
 
 const settingsStore = useSettingsStore();
 const workspacesStore = useWorkspacesStore();
+const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+const isSystemDark = ref(systemThemeMedia.matches);
 
 const { applicationTheme } = storeToRefs(settingsStore);
 const { getSelected: selectedWorkspace } = storeToRefs(workspacesStore);
 
 const { getWorkspace, changeBreadcrumbs } = workspacesStore;
+const currentApplicationTheme = computed<'light' | 'dark'>(() => {
+   if (applicationTheme.value === 'system')
+      return isSystemDark.value ? 'dark' : 'light';
+
+   return applicationTheme.value;
+});
+const onSystemThemeChange = (event: MediaQueryListEvent) => {
+   isSystemDark.value = event.matches;
+};
 
 const workspace = computed(() => {
    return getWorkspace(selectedWorkspace.value);
 });
 
 changeBreadcrumbs({ schema: workspace.value.breadcrumbs.schema });
+
+onMounted(() => {
+   systemThemeMedia.addEventListener('change', onSystemThemeChange);
+});
+
+onUnmounted(() => {
+   systemThemeMedia.removeEventListener('change', onSystemThemeChange);
+});
 </script>
 
 <style lang="scss" scoped>

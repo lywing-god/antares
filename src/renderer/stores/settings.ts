@@ -12,7 +12,7 @@ const defaultAppTheme = isDarkTheme.matches ? 'dark' : 'light';
 const defaultEditorTheme = isDarkTheme.matches ? 'twilight' : 'sqlserver';
 
 export type EditorFontSize = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' | 'xxlarge';
-export type ApplicationTheme = 'light' | 'dark';
+export type ApplicationTheme = 'light' | 'dark' | 'system';
 
 export const useSettingsStore = defineStore('settings', {
    state: () => ({
@@ -77,7 +77,7 @@ export const useSettingsStore = defineStore('settings', {
          this.executeSelected = val;
          settingsStore.set('execute_selected', this.executeSelected);
       },
-      changeApplicationTheme (theme: string) {
+      changeApplicationTheme (theme: ApplicationTheme) {
          this.applicationTheme = theme;
          settingsStore.set('application_theme', this.applicationTheme);
          ipcRenderer.send('refresh-theme-settings');

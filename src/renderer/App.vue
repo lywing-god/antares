@@ -1,5 +1,5 @@
 <template>
-   <div id="wrapper" :class="[`theme-${applicationTheme}`, !disableBlur || 'no-blur']">
+   <div id="wrapper" :class="[`theme-${currentApplicationTheme}`, !disableBlur || 'no-blur']">
       <TheTitleBar />
       <div id="window-content">
          <TheSettingBar @show-connections-modal="isAllConnectionsModal = true" />
@@ -35,7 +35,7 @@
 import { getCurrentWindow, Menu } from '@electron/remote';
 import { ipcRenderer } from 'electron';
 import { storeToRefs } from 'pinia';
-import { defineAsyncComponent, onMounted, Ref, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, Ref, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import ModalExportSchema from '@/components/ModalExportSchema.vue';
@@ -83,6 +83,17 @@ const { isExportModal: isExportSchemaModal } = storeToRefs(schemaExportStore);
 const consoleStore = useConsoleStore();
 
 const isAllConnectionsModal: Ref<boolean> = ref(false);
+const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+const isSystemDark = ref(systemThemeMedia.matches);
+const currentApplicationTheme = computed<'light' | 'dark'>(() => {
+   if (applicationTheme.value === 'system')
+      return isSystemDark.value ? 'dark' : 'light';
+
+   return applicationTheme.value;
+});
+const onSystemThemeChange = (event: MediaQueryListEvent) => {
+   isSystemDark.value = event.matches;
+};
 
 document.addEventListener('DOMContentLoaded', () => {
    setTimeout(() => {
@@ -91,6 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 onMounted(() => {
+   systemThemeMedia.addEventListener('change', onSystemThemeChange);
+
    ipcRenderer.on('open-all-connections', () => {
       isAllConnectionsModal.value = true;
    });
@@ -156,6 +169,10 @@ onMounted(() => {
          e.preventDefault();
       }
    });
+});
+
+onUnmounted(() => {
+   systemThemeMedia.removeEventListener('change', onSystemThemeChange);
 });
 
 // Console messages

@@ -432,7 +432,7 @@
 import { EventInfos, FunctionInfos, RoutineInfos, TableInfos, TriggerFunctionInfos, TriggerInfos } from 'common/interfaces/antares';
 import { formatBytes } from 'common/libs/formatBytes';
 import { storeToRefs } from 'pinia';
-import { computed, Prop, Ref, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, Prop, Ref, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import BaseIcon from '@/components/BaseIcon.vue';
@@ -456,6 +456,8 @@ const emit = defineEmits([
 
 const settingsStore = useSettingsStore();
 const workspacesStore = useWorkspacesStore();
+const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+const isSystemDark = ref(systemThemeMedia.matches);
 
 const { applicationTheme } = storeToRefs(settingsStore);
 
@@ -676,10 +678,14 @@ const showMiscFolderContext = (event: MouseEvent, type: string) => {
 
 const piePercentage = (val: number) => {
    const perc = val / maxSize.value * 100;
-   if (applicationTheme.value === 'dark')
+   const isDarkTheme = applicationTheme.value === 'dark' || (applicationTheme.value === 'system' && isSystemDark.value);
+   if (isDarkTheme)
       return { background: `conic-gradient(lime ${perc}%, white 0)` };
    else
       return { background: `conic-gradient(teal ${perc}%, silver 0)` };
+};
+const onSystemThemeChange = (event: MediaQueryListEvent) => {
+   isSystemDark.value = event.matches;
 };
 
 const setBreadcrumbs = (payload: Breadcrumb) => {
@@ -706,6 +712,14 @@ const checkLoadingStatus = (name: string, type: string) => {
 };
 
 defineExpose({ selectSchema, schemaAccordion });
+
+onMounted(() => {
+   systemThemeMedia.addEventListener('change', onSystemThemeChange);
+});
+
+onUnmounted(() => {
+   systemThemeMedia.removeEventListener('change', onSystemThemeChange);
+});
 </script>
 
 <style lang="scss">
